@@ -1,0 +1,27 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.11.0
+    container_name: vllm
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
+    environment:
+      - VLLM_USE_FLASHINFER_SAMPLER=0     # ← FlashInfer サンプラー無効化
+      - VLLM_ATTENTION_BACKEND=TORCH_SDPA # ← TORCH_SDPA: PyTorch 標準の SDPA を使用（互換性・安定性重視）。SM 7.5(GTX/RTX 20xx) では FlashAttention/FlashInfer 周りの最適化が非対応/不安定なため。
+    volumes:
+      - ./models:/models
+    command: >
+      --host 0.0.0.0
+      --port 8000
+      --model /models/Qwen3-1.7B
+      --dtype auto
+      --max-model-len 4096
+      --served-model-name Qwen3-1.7B
+      --api-key sk-local-CHANGE_ME
+      --gpu-memory-utilization 0.7
