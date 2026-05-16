@@ -1,9 +1,27 @@
 services:
-  vllm:
-    image: vllm/vllm-openai:v0.21.0
-    container_name: vllm
-    ports:
-      - "8000:8000"
+  quantize:
+    profiles: ["quantize"]
+    build:
+      context: ./quantize
+      dockerfile: Dockerfile.qwen3_5_quantize
+      args:
+        VLLM_IMAGE: vllm/vllm-openai:v0.21.0
+    image: qwen3.5-quantize
+    container_name: qwen3_5_quantize
+    shm_size: 16gb
+    environment:
+      MODEL_ID: /models/Qwen3.5-2B
+      QUANTIZED_MODEL_DIR: /models/Qwen3.5-2B-GPTQ-W4A16-G128
+      LOCAL_FILES_ONLY: "true"
+      TRUST_REMOTE_CODE: "true"
+      NUM_CALIBRATION_SAMPLES: "512"
+      CALIBRATION_MAX_SEQUENCE_LENGTH: "2048"
+      CALIBRATION_DATASET: HuggingFaceH4/ultrachat_200k
+      CALIBRATION_DATASET_SPLIT: ""
+      CALIBRATION_SEED: "42"
+      GPTQ_IGNORE: "lm_head,re:.*visual.*,re:.*linear_attn.*"
+    volumes:
+      - ./models:/models
     deploy:
       resources:
         reservations:
@@ -11,15 +29,30 @@ services:
             - driver: nvidia
               count: 1
               capabilities: ["gpu"]
+
+  vllm:
+    profiles: ["serve"]
+    image: vllm/vllm-openai:v0.21.0
+    container_name: vllm
+    shm_size: 16gb
+    ports:
+      - "8000:8000"
     volumes:
       - ./models:/models
     command:
       - "--host=0.0.0.0"
       - "--port=8000"
-      - "--model=/models/Qwen3.5-4B"
+      - "--model=/models/Qwen3.5-2B-GPTQ-W4A16-G128"
       - "--dtype=auto"
       - "--max-model-len=4096"            # 1リクエストで扱える最大コンテキスト長
-      - "--served-model-name=Qwen3.5-4B"  # OpenAI互換APIで指定するモデル名
+      - "--served-model-name=Qwen3.5-2B-GPTQ-W4A16-G128"  # OpenAI互換APIで指定するモデル名
       - "--api-key=sk-local-CHANGE_ME"    # APIキーを設定
       - "--gpu-memory-utilization=0.7"    # vLLMが使用してよいGPUメモリ割合
-      - "--max-num-seqs=16"               # vLLMが同時に処理する最大シーケンス数
+      - "--max-num-seqs=4"                # vLLMが同時に処理する最大シーケンス数
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]

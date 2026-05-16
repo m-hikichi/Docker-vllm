@@ -1,0 +1,22 @@
+ARG VLLM_IMAGE=vllm/vllm-openai:v0.21.0
+FROM ${VLLM_IMAGE}
+
+WORKDIR /workspace
+
+RUN python3 -m pip install --no-cache-dir --upgrade \
+    "transformers==4.57.6" \
+    "llmcompressor[qwen]==0.10.1a20260407" \
+    "datasets==4.6.0" \
+    "accelerate==1.12.0" \
+    "sentencepiece==0.2.1" \
+    && python3 -m pip install --no-cache-dir --upgrade \
+    "huggingface-hub==1.14.0" \
+    && python3 -m pip install --no-cache-dir --upgrade --no-deps \
+    "transformers==5.8.1" \
+    && python3 -m pip uninstall -y torchvision
+
+RUN python3 -c "import transformers, llmcompressor; from llmcompressor import oneshot; from llmcompressor.modifiers.quantization import GPTQModifier; from transformers import Qwen3_5ForConditionalGeneration; print('transformers', transformers.__version__, 'llmcompressor', llmcompressor.__version__)"
+
+COPY quantize_qwen3_5.py /workspace/quantize_qwen3_5.py
+
+ENTRYPOINT ["python3", "/workspace/quantize_qwen3_5.py"]
