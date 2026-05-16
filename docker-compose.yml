@@ -13,12 +13,13 @@ services:
               capabilities: ["gpu"]
     volumes:
       - ./models:/models
-    command: >
-      --host 0.0.0.0
-      --port 8000
-      --model /models/Qwen3-1.7B
-      --dtype auto
-      --max-model-len 4096
-      --served-model-name Qwen3-1.7B
-      --api-key sk-local-CHANGE_ME
-      --gpu-memory-utilization 0.7
+    command:
+      - "--host=0.0.0.0"
+      - "--port=8000"
+      - "--model=/models/Qwen3.5-4B"
+      - "--dtype=auto"
+      - "--max-model-len=4096"            # 1リクエストで扱える最大コンテキスト長
+      - "--served-model-name=Qwen3.5-4B"  # OpenAI互換APIで指定するモデル名
+      - "--api-key=sk-local-CHANGE_ME"    # APIキーを設定
+      - "--gpu-memory-utilization=0.7"    # vLLMが使用してよいGPUメモリ割合
+      - "--max-num-seqs=16"               # vLLMが同時に処理する最大シーケンス数
